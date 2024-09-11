@@ -105,4 +105,26 @@ QStr *qstr_substring(const QStr *str, size_t start, size_t end) {
   return result;
 }
 
+void qstr_trimr(QStr *str) {
+  char ch;
+  if (str->length == 0)
+    return;
+  int idx = str->length - 1;
+  while ((idx >= 0) && ((ch = str->data[idx]) == ' ' || ch == '\t' ||
+                        ch == '\n' || ch == '\r')) {
+    str->data[idx] = '\0';
+    str->length = idx;
+    idx--;
+  }
+}
+
+void qstr_trunc(QStr *str, size_t idx) {
+  if (idx < 0)
+    idx = 0;
+  if (idx >= str->length)
+    return;
+  str->data[idx] = '\0';
+  str->length = idx;
+}
+
 void qstr_print(const QStr *str) { printf("%s", str->data); }

@@ -1,5 +1,6 @@
 // Test the QStr functionality
 #include "vepQStr.h"
+#include <stdbool.h>
 #include <stdio.h>
 #include <strings.h>
 
@@ -17,12 +18,23 @@ static QStr *file_gets(FILE *file) {
 }
 
 void test_qstr() {
-  QStr *s = qstr_new(100, "Hello");
+  QStr *s = qstr_new(10, "Hello");
 
-  for (int i = 0; i < 1000; i++)
-    qstr_cat(s, " world\n");
+  for (int i = 0; i < 3; i++)
+    qstr_cat(s, " world");
 
-  printf("str='%s' (%ld)\n", s->data, s->allocated);
+  printf("str='%s' (%ld)\n", s->data, s->length);
+  qstr_cat(s, " and end....     \t\n\n     ");
+  qstr_trimr(s);
+  printf("str='%s' (%ld)\n", s->data, s->length);
+
+  qstr_trunc(s, 4);
+  printf("str='%s' (%ld)\n", s->data, s->length);
+
+  qstr_trunc(s, 0);
+  qstr_cat(s, "     \t\n\n     ");
+  qstr_trimr(s);
+  printf("str='%s' (%ld)\n", s->data, s->length);
 }
 
 void test_read_stdin() {
@@ -34,6 +46,7 @@ void test_read_stdin() {
 }
 
 int main(int argc, char const *argv[]) {
-  test_read_stdin();
+  // test_read_stdin();
+  test_qstr();
   return 0;
 }

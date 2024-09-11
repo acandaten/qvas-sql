@@ -32,6 +32,11 @@ QStr *qstr_dup(const QStr *str);
 // Substring of a QStr
 QStr *qstr_substring(const QStr *str, size_t start, size_t end);
 
+// Right trim QStr
+void qstr_trimr(QStr *str);
+
+void qstr_trunc(QStr *str, size_t idx);
+
 // Print a QStr
 void qstr_print(const QStr *str);
 
