@@ -1,3 +1,6 @@
 *.o
-test_qstr
 *.log
+
+# executables
+test_qstr
+qsql
