@@ -27,8 +27,8 @@ $(OBJ)/libqstruct.a: $(OBJS)
 test_qstr: test_qstr.o vepQStr.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
-qsql: qsql.o
-	gcc $(CFLAGS) $(LIBPOSTGRES) -o $@ $<
+qsql: qsql.o vepQStr.o 
+	gcc $(CFLAGS) $(LIBPOSTGRES) -o $@ $^
 
 
 run:
