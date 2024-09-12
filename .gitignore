@@ -3,4 +3,5 @@
 
 # executables
 test_qstr
+test_qsql_funs
 qsql

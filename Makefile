@@ -1,4 +1,4 @@
-CC=cc
+CC=gcc
 POSTGRES_HOME=$(ECPG_HOME)
 CFLAGS=-m32 -DPOSTGRES -DUNIX -I. -I/usr/include/postgresql -I$(POSTGRES_HOME)/include 
 DEPS=
@@ -24,8 +24,11 @@ $(OBJ)/libqstruct.a: $(OBJS)
 %.o: %.c $(DEPS)
 	$(CC) $(CFLAGS) -c $(COPTS) -o $@ $<
 
+test_qsql_funs: test_qsql_funs.o vepQStr.o vepQList.o
+	$(CC) $(CFLAGS) -o $@ $^ 
+
 test_qstr: test_qstr.o vepQStr.o
-	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
+	$(CC) $(CFLAGS) -o $@ $^ 
 
 qsql: qsql.o vepQStr.o 
 	gcc $(CFLAGS) $(LIBPOSTGRES) -o $@ $^
