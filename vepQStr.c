@@ -1,4 +1,5 @@
 #include "vepQStr.h"
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -110,8 +111,7 @@ void qstr_trimr(QStr *str) {
   if (str->length == 0)
     return;
   int idx = str->length - 1;
-  while ((idx >= 0) && ((ch = str->data[idx]) == ' ' || ch == '\t' ||
-                        ch == '\n' || ch == '\r')) {
+  while ((idx >= 0) && isspace(str->data[idx]) != 0) {
     str->data[idx] = '\0';
     str->length = idx;
     idx--;

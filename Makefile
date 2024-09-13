@@ -5,9 +5,7 @@ DEPS=
 COPTS=
 #CFLAG=-DPOSTGRES -I/usr/include/postgresql -m32
 
-OBJ=obj
-
-OBJS=$(OBJ)/LIB_vepQList.o $(OBJ)/LIB_vepQUte.o $(OBJ)/LIB_vepQStr.o 
+OBJS=vepQStr.o vepQList.o qsql_funs.o
 LIBPOSTGRES=-L $(POSTGRES_HOME)/lib -L /usr/local/pgsql/lib -lpq -lpgtypes
 
 LIBS=
@@ -24,7 +22,7 @@ $(OBJ)/libqstruct.a: $(OBJS)
 %.o: %.c $(DEPS)
 	$(CC) $(CFLAGS) -c $(COPTS) -o $@ $<
 
-test_qsql_funs: test_qsql_funs.o vepQStr.o vepQList.o
+test_qsql_funs: test_qsql_funs.o $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^ 
 
 test_qstr: test_qstr.o vepQStr.o

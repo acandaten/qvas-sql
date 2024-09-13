@@ -1,68 +1,82 @@
 // Test the QStr functionality
+#include "qsql_funs.h"
 #include "vepQList.h"
 #include "vepQStr.h"
+#include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <strings.h>
 
 QList *sql_list;
 QStr *current_sql;
 
-static QStr *file_gets(FILE *file) {
-  char inp[100];
-  QStr *s = qstr_new(100, "");
-
-  while (fgets(inp, 100, file) != NULL) {
-    qstr_cat(s, inp);
-    if ((s->data)[s->length - 1] == '\n') {
-      break;
-    }
+static int run_command(char *cmd, char **left) {
+  QStr *str;
+  char *ch = cmd;
+  while (*ch != '\0') {
+    *ch = toupper(*ch);
+    ch++;
   }
-  return s;
-}
-
-static void remove_comments(QStr *ln) {
-  if (ln->data[0] == '#')
-    qstr_trunc(ln, 0);
-  char *p = ln->data; // search index
-  while (*p != '\0') {
-    if (*p == '-' && *(p + 1) == '-') {
-      *p = '\0';
-      ln->length = (p - ln->data);
-      break;
+  if (strcmp(cmd, "GO") == 0 || strcmp(cmd, "G") == 0) {
+    // PRINT
+    while ((str = q_list_shift(sql_list)) != NULL) {
+      printf("EXEC %s\n", str->data);
+      qstr_free(str);
     }
-    p++;
-  }
-}
 
-static void add_current_sql() {
-  printf("-----------------\n%s\n--------------------\n", current_sql->data);
-  qstr_trunc(current_sql, 0);
+  } else if (strcmp(cmd, "PRINT") == 0 || strcmp(cmd, "P") == 0) {
+    for (int i = 0; i < q_list_size(sql_list); i++) {
+      str = q_list_get(sql_list, i);
+      printf("SQL:%s;\n\n", str->data);
+    }
+  } else {
+    return 1;
+  }
+  return 0;
 }
 
 static void process_line(QStr *ln) {
   remove_comments(ln);
   char *p = ln->data; // search index
   while (*p != '\0') {
+    // Detect semicolon and add statement
     if (*p == ';') {
       *p = '\0';
       qstr_cat(current_sql, ln->data);
       qstr_trunc(ln, 0);
+      add_current_sql(current_sql, sql_list);
+
       qstr_cat(ln, p + 1);
       p = ln->data;
-      add_current_sql();
 
-    } else
+      // Detect command (starts with back slash)
+    } else if (*p == '\\' && isalpha(*(p + 1))) {
+      *p = '\0';
+      qstr_cat(current_sql, ln->data);
+      qstr_trunc(ln, 0);
+      add_current_sql(current_sql, sql_list);
+
+      // Command
+      char *pi = p + 1;
+      char *wrd = read_word(&pi);
+      if (wrd != NULL) {
+        run_command(wrd, &pi);
+        qstr_cat(ln, pi);
+        p = ln->data;
+        free(wrd);
+      }
+
+    } else { // Just a normal ch in line
       p++;
+    }
   }
-  // printf("D1> %s\n", ln->data);
   qstr_trimr(ln);
   if (ln->length) {
     qstr_cat(current_sql, ln->data);
     qstr_cat(current_sql, "\n");
   }
-
-  // printf("\n-----------------\n%s\n--------------------\n", ln->data);
 }
 
 void read_loop() {
@@ -72,8 +86,8 @@ void read_loop() {
     qstr_trimr(str);
     process_line(str);
   }
-  add_current_sql();
-  printf("\nCiao for now...\n");
+  add_current_sql(current_sql, sql_list);
+  // printf("\nCiao for now...\n");
 }
 
 int main(int argc, char const *argv[]) {
