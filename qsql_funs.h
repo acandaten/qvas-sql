@@ -4,7 +4,19 @@
 
 #include "vepQList.h"
 #include "vepQStr.h"
+#include <libpq-fe.h>
+#include <stdbool.h>
 #include <stdio.h>
+
+typedef struct {
+  bool header; /* print output field headings and row count */
+  bool align;  /* fill align the fields */
+  bool border; /* old brain dead format */
+  bool row_count;
+} QSqlOpt;
+
+extern QList *sql_list;
+extern int (*cmd_function)(char *, char **);
 
 QStr *file_gets(FILE *file);
 
@@ -15,5 +27,11 @@ void remove_comments(QStr *ln);
 char *read_word(char **ptr);
 
 void add_current_sql(QStr *sql, QList *lst);
+
+// Format SQL Results
+void format_sql_result(PGresult *res, QSqlOpt *opt, FILE *fd);
+
+// read loop.
+void read_loop();
 
 #endif // QSTR_FUNS_

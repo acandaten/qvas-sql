@@ -35,6 +35,11 @@ void test_qstr() {
   qstr_cat(s, "     \t\n\n     ");
   qstr_trimr(s);
   printf("str='%s' (%ld)\n", s->data, s->length);
+
+  qstr_trunc(s, 0);
+  qstr_cat(s, "     \t\nabc\n     ");
+  qstr_trim(s);
+  printf("str='%s' (%ld)\n", s->data, s->length);
 }
 
 void test_read_stdin() {

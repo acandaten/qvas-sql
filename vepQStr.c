@@ -112,9 +112,24 @@ void qstr_trimr(QStr *str) {
     return;
   int idx = str->length - 1;
   while ((idx >= 0) && isspace(str->data[idx]) != 0) {
-    str->data[idx] = '\0';
-    str->length = idx;
     idx--;
+  }
+  idx++;
+  str->data[idx] = '\0';
+  str->length = idx;
+}
+
+void qstr_trim(QStr *str) {
+  qstr_trimr(str);
+  if (str->length == 0)
+    return;
+  char *p = str->data;
+  while (isspace(*p)) {
+    p++;
+  }
+  if (p != str->data) {
+    qstr_trunc(str, 0);
+    qstr_cat(str, p);
   }
 }
 

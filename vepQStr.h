@@ -34,6 +34,7 @@ QStr *qstr_substring(const QStr *str, size_t start, size_t end);
 
 // Right trim QStr
 void qstr_trimr(QStr *str);
+void qstr_trim(QStr *str);
 
 void qstr_trunc(QStr *str, size_t idx);
 

@@ -1,3 +1,4 @@
+BIN=bin
 CC=gcc
 POSTGRES_HOME=$(ECPG_HOME)
 CFLAGS=-m32 -DPOSTGRES -DUNIX -I. -I/usr/include/postgresql -I$(POSTGRES_HOME)/include 
@@ -6,31 +7,32 @@ COPTS=
 #CFLAG=-DPOSTGRES -I/usr/include/postgresql -m32
 
 OBJS=vepQStr.o vepQList.o qsql_funs.o
+LIBS=
 LIBPOSTGRES=-L $(POSTGRES_HOME)/lib -L /usr/local/pgsql/lib -lpq -lpgtypes
 
-LIBS=
 
-TARGET=test_qstr
+TARGET=$(BIN)/test_qstr $(BIN)/test_qsql_funs $(BIN)/qsql
 
 target: $(TARGET)
-
-$(OBJ)/libqstruct.a: $(OBJS)
-	echo Building $@
-	# cd $(OBJ)
-	ar -r $@ $(OBJS)
 
 %.o: %.c $(DEPS)
 	$(CC) $(CFLAGS) -c $(COPTS) -o $@ $<
 
-test_qsql_funs: test_qsql_funs.o $(OBJS)
+$(BIN)/test_qsql_funs: test_qsql_funs.o $(OBJS)
+	mkdir -p $(BIN)
 	$(CC) $(CFLAGS) -o $@ $^ 
 
-test_qstr: test_qstr.o vepQStr.o
+$(BIN)/test_qstr: test_qstr.o vepQStr.o
+	mkdir -p $(BIN)
 	$(CC) $(CFLAGS) -o $@ $^ 
 
-qsql: qsql.o vepQStr.o 
+$(BIN)/test_opt: test_opt.o
+	mkdir -p $(BIN)
+	$(CC) $(CFLAGS) -o $@ $^ 
+
+$(BIN)/qsql: qsql.o $(OBJS) 
+	mkdir -p $(BIN)
 	gcc $(CFLAGS) $(LIBPOSTGRES) -o $@ $^
-
 
 run:
 	@list_test

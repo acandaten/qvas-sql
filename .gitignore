@@ -2,6 +2,7 @@
 *.log
 
 # executables
+bin/*
 test_qstr
 test_qsql_funs
 qsql
