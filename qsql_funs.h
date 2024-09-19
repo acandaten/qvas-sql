@@ -13,10 +13,13 @@ typedef struct {
   bool align;  /* fill align the fields */
   bool border; /* old brain dead format */
   bool row_count;
+  bool break_on_error;
+  bool debug;
 } QSqlOpt;
 
 extern QList *sql_list;
 extern int (*cmd_function)(char *, char **);
+extern bool process_exiting;
 
 QStr *file_gets(FILE *file);
 

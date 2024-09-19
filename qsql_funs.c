@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <vepQStr.h>
 
 QStr *file_gets(FILE *file) {
   char inp[100];
@@ -34,6 +35,9 @@ void remove_comments(QStr *ln) {
   }
 }
 
+// Reads an alpha word (no numbers or speecial chars) if at start , else null.
+// If the word is returned, it is malloc copy and needs to be freed at some
+// stage.
 char *read_word(char **ptr) {
   if (ptr == NULL || *ptr == NULL) {
     return NULL;
@@ -67,6 +71,8 @@ char *read_word(char **ptr) {
 }
 
 void add_current_sql(QStr *sql, QList *lst) {
+  if (process_exiting)
+    return;
   QStr *str = qstr_dup(sql);
   qstr_trunc(sql, 0);
   qstr_trim(str);
@@ -74,10 +80,13 @@ void add_current_sql(QStr *sql, QList *lst) {
     q_list_push(lst, str);
 }
 
-static void process_line(QStr *ln, QStr *current_sql) {
+// Parse and add line to current. Return non-zero if error and wish to stop
+// processing
+static int process_line(QStr *ln, QStr *current_sql) {
+  int error = 0;
   remove_comments(ln);
   char *p = ln->data; // search index
-  while (*p != '\0') {
+  while (*p != '\0' && !process_exiting) {
     // Detect semicolon and add statement
     if (*p == ';') {
       *p = '\0';
@@ -103,6 +112,8 @@ static void process_line(QStr *ln, QStr *current_sql) {
           cmd_function(wrd, &pi);
         } else {
           printf("Undefined function: cmd_function\n");
+          process_exiting = true;
+          error = 5;
         }
         qstr_cat(ln, pi);
         p = ln->data;
@@ -112,18 +123,20 @@ static void process_line(QStr *ln, QStr *current_sql) {
     } else { // Just a normal ch in line
       p++;
     }
-  }
+  } // while not at end
+
   qstr_trimr(ln);
   if (ln->length) {
     qstr_cat(current_sql, ln->data);
     qstr_cat(current_sql, "\n");
   }
+  return error;
 }
 
 void read_loop() {
   QStr *str;
   QStr *current_sql = qstr_new(1000, "");
-  while ((str = file_gets(stdin))->length > 0) {
+  while ((str = file_gets(stdin))->length > 0 && !process_exiting) {
     bool a = str->data[str->length - 1] == '\n';
     qstr_trimr(str);
     process_line(str, current_sql);
@@ -133,8 +146,12 @@ void read_loop() {
 
 void format_sql_result(PGresult *res, QSqlOpt *opt, FILE *fd) {
   // Get the number of rows and columns in the query result
+  QStr *hbar = qstr_new(100, "");
   int rows = PQntuples(res);
   int cols = PQnfields(res);
+  char end_line[10] = "|\n";
+  if (opt->border == false)
+    strcpy(end_line, "\n");
 
   int *col_lens = malloc(sizeof(int) * cols);
   int *col_types = malloc(sizeof(int) * cols);
@@ -156,27 +173,41 @@ void format_sql_result(PGresult *res, QSqlOpt *opt, FILE *fd) {
           col_lens[j] = itmp;
       }
     }
+
+    // create hbar
+    qstr_cat(hbar, "+");
+    for (int i = 0; i < cols; i++) {
+      for (int j = 0; j < col_lens[i]; j++)
+        qstr_cat(hbar, "-");
+      qstr_cat(hbar, "-");
+    }
+    if (opt->border == false)
+      qstr_trunc(hbar, hbar->length - 2);
+    qstr_cat(hbar, "\n");
+
+    // negate VARCHAR lengths for right-padd
+    for (int j = 0; j < cols; j++) {
+      if (col_types[j] == 18 || col_types[j] == 25 || col_types[j] == 1043) {
+        col_lens[j] = -1 * col_lens[j];
+      }
+    }
   }
 
-  // create hbar
-  QStr *hbar = qstr_new(100, "+");
-  for (int i = 0; i < cols; i++) {
-    for (int j = 0; j < col_lens[i]; j++)
-      qstr_cat(hbar, "-");
-    qstr_cat(hbar, "-");
-  }
+  // adjust col_len based on type
 
   // Print the column names
   if (opt->header == true) {
-    if (opt->align)
-      fprintf(fd, "%s\n", hbar->data);
+    fprintf(fd, "%s", hbar->data);
+
     for (int i = 0; i < cols; i++) {
-      fprintf(fd, "|%*s", col_lens[i], PQfname(res, i));
+      if (i > 0 || opt->border == true)
+        fprintf(fd, "|%*s", col_lens[i], PQfname(res, i));
+      else
+        fprintf(fd, "%*s", col_lens[i], PQfname(res, i));
     }
-    fprintf(fd, "|\n");
+    fputs(end_line, fd);
   }
-  if (opt->align)
-    fprintf(fd, "%s\n", hbar->data);
+  fprintf(fd, "%s", hbar->data);
 
   // Print all the rows and columns
   for (int i = 0; i < rows; i++) {
@@ -185,12 +216,19 @@ void format_sql_result(PGresult *res, QSqlOpt *opt, FILE *fd) {
       char *val = PQgetvalue(res, i, j);
       if (col_types[j] == 1114 && strncmp(val, "1970-01-01 00:00:00", 19) == 0)
         val = "";
-      fprintf(fd, "|%*s", col_lens[j], val);
+      if (j > 0 || opt->border == true)
+        fprintf(fd, "|%*s", col_lens[j], val);
+      else
+        fprintf(fd, "%*s", col_lens[j], val);
     }
-    fprintf(fd, "|\n");
+    fputs(end_line, fd);
   }
   if (opt->align)
-    fprintf(fd, "%s\n", hbar->data);
+    fprintf(fd, "%s", hbar->data);
   if (opt->row_count)
     fprintf(fd, "(%d rows)\n", rows);
+
+  free(col_lens);
+  free(col_types);
+  qstr_free(hbar);
 }
