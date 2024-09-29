@@ -15,6 +15,7 @@ typedef struct {
   bool row_count;
   bool break_on_error;
   bool debug;
+  bool autocommit;
 } QSqlOpt;
 
 extern QList *sql_list;
@@ -30,6 +31,8 @@ void remove_comments(QStr *ln);
 char *read_word(char **ptr);
 
 void add_current_sql(QStr *sql, QList *lst);
+
+char *convert_sql_val(int coltype, char * val);
 
 // Format SQL Results
 void format_sql_result(PGresult *res, QSqlOpt *opt, FILE *fd);

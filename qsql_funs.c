@@ -7,6 +7,8 @@
 #include <string.h>
 #include <strings.h>
 #include <vepQStr.h>
+#define __USE_XOPEN
+#include <time.h>
 
 QStr *file_gets(FILE *file) {
   char inp[100];
@@ -144,6 +146,50 @@ void read_loop() {
   add_current_sql(current_sql, sql_list);
 }
 
+static bool isEpochTime(struct tm *tm) {
+  if (tm->tm_hour == 0 && tm->tm_min == 0&& tm->tm_sec == 0) {
+    return true;
+  }
+  return false;
+}
+
+static bool isEpoch(struct tm *tm) {
+  if (tm->tm_hour == 0 && tm->tm_min == 0&& tm->tm_sec == 0) {
+    if (tm->tm_year == 70 && tm->tm_mon == 0 && tm->tm_mday == 1)
+      return true;
+  }
+  return false;
+}
+
+static bool parseISOTimestamp(const char *str, struct tm *stm) {
+  char * ret;
+  if (str[4] == '-' && str[7] == '-' && str[13] ==  ':') {
+    ret = strptime(str, "%Y-%m-%d %H:%M:%S", stm);
+    if (ret == NULL) return false;
+    return true;
+  }
+  return false; 
+}
+
+char *convert_sql_val(int coltype, char * val) {
+  struct tm timeval;
+  static char out[30];
+  if (coltype != 1114) {
+    return val;
+  }
+  if (parseISOTimestamp(val, &timeval) == false)
+    return val;
+  if (isEpoch(&timeval)) {
+    strcpy(out, "");
+  } else if (isEpochTime(&timeval)) {
+    strftime(out, sizeof(out), "%d-%b-%Y", &timeval);
+  } else {
+    strftime(out, sizeof(out), "%d-%b-%Y %H:%M:%S", &timeval);
+  }
+  return out;
+}
+
+
 void format_sql_result(PGresult *res, QSqlOpt *opt, FILE *fd) {
   // Get the number of rows and columns in the query result
   QStr *hbar = qstr_new(100, "");
@@ -169,6 +215,9 @@ void format_sql_result(PGresult *res, QSqlOpt *opt, FILE *fd) {
     for (int i = 0; i < rows; i++) {
       for (int j = 0; j < cols; j++) {
         itmp = PQgetlength(res, i, j);
+        if (col_types[j] == 1114) {
+          itmp = strlen(convert_sql_val(1114, PQgetvalue(res, i, j)));
+        }
         if (itmp > col_lens[j])
           col_lens[j] = itmp;
       }
@@ -213,7 +262,7 @@ void format_sql_result(PGresult *res, QSqlOpt *opt, FILE *fd) {
   for (int i = 0; i < rows; i++) {
     for (int j = 0; j < cols; j++) {
       // Print the column value
-      char *val = PQgetvalue(res, i, j);
+      char *val = convert_sql_val(col_types[j], PQgetvalue(res, i, j));
       if (col_types[j] == 1114 && strncmp(val, "1970-01-01 00:00:00", 19) == 0)
         val = "";
       if (j > 0 || opt->border == true)

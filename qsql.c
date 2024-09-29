@@ -14,9 +14,11 @@ int (*cmd_function)(char *, char **);
 bool process_exiting = false;
 
 PGconn *conn;
-QSqlOpt sql_opt = {true, true, true, true, false};
+QSqlOpt sql_opt = {true, true, true, true, false, false, true};
 
 int main_output = 0;
+
+// LOCAL FUNCTIONS
 
 int usage() {
   printf("qsql [opts] [database] < sql\n");
@@ -25,6 +27,7 @@ int usage() {
   printf("      -B : no borders\n");
   printf("      -H : no header\n");
   printf("      -e : break on error\n");
+  printf("      -t : transaction (autocommit off)\n");
   printf("      -d : debug\n");
   return 1;
 }
@@ -43,18 +46,18 @@ int run_sql(PGconn *conn, const char *query, QSqlOpt *opt) {
   // Check if the query execution was successful
   if (resStatus == PGRES_TUPLES_OK) {
     format_sql_result(res, opt, stdout);
+
   } else if (resStatus == PGRES_COMMAND_OK) {
     char *cmd_tuples = PQcmdTuples(res);
     if (strlen(cmd_tuples) == 0) {
-      fprintf(stdout, "Command successful\n");
+      // fprintf(stdout, "run sql : %s\n", query);
+      fprintf(stdout, "Command successful.\n");
 
     } else {
-      fprintf(stdout, "Command successful: Records affected: %s\n",
-              PQcmdTuples(res));
+      fprintf(stdout, "Command successful: Records affected: %s\n", PQcmdTuples(res));
     }
   } else {
-    fprintf(stdout, "Error while executing the query: %s\n",
-            PQerrorMessage(conn));
+    fprintf(stdout, "Error while executing the query: %s\n", PQerrorMessage(conn));
     out = 3;
   }
 
@@ -86,6 +89,7 @@ int run_command(char *cmd, char **left) {
       str = q_list_get(sql_list, i);
       printf("SQL:%s;\n\n", str->data);
     } // each sql
+
   } else {
     return 1;
   }
@@ -97,8 +101,7 @@ PGconn *connect_db(const char *conninfo) {
 
   if (PQstatus(conn) != CONNECTION_OK) {
     // If not successful, print the error message and finish the connection
-    printf("Error while connecting to the database server: %s\n",
-           PQerrorMessage(conn));
+    printf("Error while connecting to the database server: %s\n", PQerrorMessage(conn));
 
     // Finish the connection
     PQfinish(conn);
@@ -114,7 +117,7 @@ int main(int argc, char *argv[]) {
     return usage();
   }
 
-  while ((opt = getopt(argc, argv, "AHBe")) != -1) {
+  while ((opt = getopt(argc, argv, "AHBet")) != -1) {
     switch (opt) {
     case 'A':
       sql_opt.align = false;
@@ -129,12 +132,14 @@ int main(int argc, char *argv[]) {
     case 'e':
       sql_opt.break_on_error = true;
       break;
+    case 't':
+      sql_opt.autocommit = false;
+      break;
     case 'd':
       sql_opt.debug = true;
       break;
     default:
-      fprintf(stderr, "Usage: %s [-i input_file] [-o output_file] [-v] [-g]\n",
-              argv[0]);
+      fprintf(stderr, "Usage: %s [-i input_file] [-o output_file] [-v] [-g]\n", argv[0]);
       exit(EXIT_FAILURE);
     }
   }
@@ -146,6 +151,10 @@ int main(int argc, char *argv[]) {
   if (conn == NULL)
     exit(1);
 
+  if (sql_opt.autocommit == false) {
+    run_sql(conn, "START TRANSACTION", &sql_opt);
+  }
+
   // printf("Port: %s\n", PQport(conn));
   // printf("Host: %s\n", PQhost(conn));
   // printf("DBName: %s\n", PQdb(conn));
@@ -153,6 +162,16 @@ int main(int argc, char *argv[]) {
   sql_list = q_list_new(10);
   cmd_function = run_command;
   read_loop();
+
+  if (sql_opt.autocommit == false) {
+    if (main_output != 0) {
+      fprintf(stdout, "\nROLLBACK\n");
+      run_sql(conn, "ROLLBACK", &sql_opt);
+
+    } else {
+      run_sql(conn, "COMMIT", &sql_opt);
+    }
+  }
 
   PQfinish(conn);
 

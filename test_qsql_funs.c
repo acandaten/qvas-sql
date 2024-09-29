@@ -8,10 +8,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <unistd.h>
 
 QList *sql_list;
 
 int (*cmd_function)(char *, char **);
+
+bool process_exiting = false;
+
+QSqlOpt sql_opt = {true, true, true, true, false, false, true};
+
+int main_output = 0;
 
 int run_command(char *cmd, char **left) {
   QStr *str;
@@ -38,9 +45,45 @@ int run_command(char *cmd, char **left) {
   return 0;
 }
 
-int main(int argc, char const *argv[]) {
+void test_read_loop() {
   sql_list = q_list_new(11);
   cmd_function = run_command;
   read_loop();
-  return 0;
+}
+
+void test_convert_sql_val() {
+  char dt[100];
+  strcpy(dt, "1970-01-01 00:00:00");
+  printf("%s(%d) = %s\n", dt, 1000, convert_sql_val(1000, dt));
+  printf("%s(%d) = %s\n", dt, 1114, convert_sql_val(1114, dt));
+  strcpy(dt, "2024-03-14 00:00:00");
+  printf("%s(%d) = %s\n", dt, 1000, convert_sql_val(1000, dt));
+  printf("%s(%d) = %s\n", dt, 1114, convert_sql_val(1114, dt));
+  strcpy(dt, "2024-08-28 09:12:40");
+  printf("%s(%d) = %s\n", dt, 1000, convert_sql_val(1000, dt));
+  printf("%s(%d) = %s\n", dt, 1114, convert_sql_val(1114, dt));
+}
+
+int main(int argc, char *argv[]) {
+  int opt;
+
+  if (argc <= 1) {
+    puts("Usage: test_qsql_funs  [opts]\n  where -r : read_loop; -d : date test");
+    return 9;
+  }
+
+  while ((opt = getopt(argc, argv, "rd")) != -1) {
+    switch (opt) {
+    case 'r':
+      test_read_loop();
+      break;
+    case 'd':
+      test_convert_sql_val();
+      break;
+    default:
+      fprintf(stderr, "Usage: %s [-r] [-d]\n", argv[0]);
+      exit(EXIT_FAILURE);
+    }
+  }
+  return EXIT_SUCCESS;
 }

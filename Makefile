@@ -20,7 +20,7 @@ target: $(TARGET)
 
 $(BIN)/test_qsql_funs: test_qsql_funs.o $(OBJS)
 	mkdir -p $(BIN)
-	$(CC) $(CFLAGS) -o $@ $^ 
+	$(CC) $(CFLAGS) $(LIBPOSTGRES) -o $@ $^ 
 
 $(BIN)/test_qstr: test_qstr.o vepQStr.o
 	mkdir -p $(BIN)
