@@ -82,6 +82,8 @@ void add_current_sql(QStr *sql, QList *lst) {
     q_list_push(lst, str);
 }
 
+static bool isCmdChar(char ch) { return (ch == 'p' || ch == 'P' || ch == 'g' || ch == 'G'); }
+
 // Parse and add line to current. Return non-zero if error and wish to stop
 // processing
 static int process_line(QStr *ln, QStr *current_sql) {
@@ -100,7 +102,8 @@ static int process_line(QStr *ln, QStr *current_sql) {
       p = ln->data;
 
       // Detect command (starts with back slash)
-    } else if (*p == '\\' && isalpha(*(p + 1))) {
+      // } else if (*p == '\\' && isalpha(*(p + 1))) {
+    } else if (*p == '\\' && isCmdChar(*(p + 1)) == true) {
       *p = '\0';
       qstr_cat(current_sql, ln->data);
       qstr_trunc(ln, 0);
@@ -147,14 +150,14 @@ void read_loop() {
 }
 
 static bool isEpochTime(struct tm *tm) {
-  if (tm->tm_hour == 0 && tm->tm_min == 0&& tm->tm_sec == 0) {
+  if (tm->tm_hour == 0 && tm->tm_min == 0 && tm->tm_sec == 0) {
     return true;
   }
   return false;
 }
 
 static bool isEpoch(struct tm *tm) {
-  if (tm->tm_hour == 0 && tm->tm_min == 0&& tm->tm_sec == 0) {
+  if (tm->tm_hour == 0 && tm->tm_min == 0 && tm->tm_sec == 0) {
     if (tm->tm_year == 70 && tm->tm_mon == 0 && tm->tm_mday == 1)
       return true;
   }
@@ -162,19 +165,23 @@ static bool isEpoch(struct tm *tm) {
 }
 
 static bool parseISOTimestamp(const char *str, struct tm *stm) {
-  char * ret;
-  if (str[4] == '-' && str[7] == '-' && str[13] ==  ':') {
+  char *ret;
+  if (str[4] == '-' && str[7] == '-' && str[13] == ':') {
     ret = strptime(str, "%Y-%m-%d %H:%M:%S", stm);
-    if (ret == NULL) return false;
+    if (ret == NULL)
+      return false;
     return true;
   }
-  return false; 
+  return false;
 }
 
-char *convert_sql_val(int coltype, char * val) {
+char *convert_sql_val(int coltype, char *val, bool ingres_date_flag) {
   struct tm timeval;
   static char out[30];
   if (coltype != 1114) {
+    return val;
+  }
+  if (ingres_date_flag == false) {
     return val;
   }
   if (parseISOTimestamp(val, &timeval) == false)
@@ -189,13 +196,14 @@ char *convert_sql_val(int coltype, char * val) {
   return out;
 }
 
-
 void format_sql_result(PGresult *res, QSqlOpt *opt, FILE *fd) {
   // Get the number of rows and columns in the query result
   QStr *hbar = qstr_new(100, "");
   int rows = PQntuples(res);
   int cols = PQnfields(res);
   char end_line[10] = "|\n";
+
+  snprintf(end_line, 3, "%s\n", opt->delimit_char);
   if (opt->border == false)
     strcpy(end_line, "\n");
 
@@ -216,7 +224,7 @@ void format_sql_result(PGresult *res, QSqlOpt *opt, FILE *fd) {
       for (int j = 0; j < cols; j++) {
         itmp = PQgetlength(res, i, j);
         if (col_types[j] == 1114) {
-          itmp = strlen(convert_sql_val(1114, PQgetvalue(res, i, j)));
+          itmp = strlen(convert_sql_val(1114, PQgetvalue(res, i, j), opt->ingres_date));
         }
         if (itmp > col_lens[j])
           col_lens[j] = itmp;
@@ -250,7 +258,7 @@ void format_sql_result(PGresult *res, QSqlOpt *opt, FILE *fd) {
 
     for (int i = 0; i < cols; i++) {
       if (i > 0 || opt->border == true)
-        fprintf(fd, "|%*s", col_lens[i], PQfname(res, i));
+        fprintf(fd, "%s%*s", opt->delimit_char, col_lens[i], PQfname(res, i));
       else
         fprintf(fd, "%*s", col_lens[i], PQfname(res, i));
     }
@@ -262,11 +270,11 @@ void format_sql_result(PGresult *res, QSqlOpt *opt, FILE *fd) {
   for (int i = 0; i < rows; i++) {
     for (int j = 0; j < cols; j++) {
       // Print the column value
-      char *val = convert_sql_val(col_types[j], PQgetvalue(res, i, j));
-      if (col_types[j] == 1114 && strncmp(val, "1970-01-01 00:00:00", 19) == 0)
-        val = "";
+      char *val = convert_sql_val(col_types[j], PQgetvalue(res, i, j), opt->ingres_date);
+      // if (col_types[j] == 1114 && strncmp(val, "1970-01-01 00:00:00", 19) == 0)
+      //   val = "";
       if (j > 0 || opt->border == true)
-        fprintf(fd, "|%*s", col_lens[j], val);
+        fprintf(fd, "%s%*s", opt->delimit_char, col_lens[j], val);
       else
         fprintf(fd, "%*s", col_lens[j], val);
     }

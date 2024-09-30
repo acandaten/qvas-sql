@@ -14,7 +14,7 @@ int (*cmd_function)(char *, char **);
 bool process_exiting = false;
 
 PGconn *conn;
-QSqlOpt sql_opt = {true, true, true, true, false, false, true};
+QSqlOpt sql_opt = {true, true, true, true, false, false, true, .ingres_date = true, .delimit_char = "|"};
 
 int main_output = 0;
 
@@ -26,6 +26,7 @@ int usage() {
   printf("      -A : unaligned\n");
   printf("      -B : no borders\n");
   printf("      -H : no header\n");
+  printf("      -D : no Ingres date\n");
   printf("      -e : break on error\n");
   printf("      -t : transaction (autocommit off)\n");
   printf("      -d : debug\n");
@@ -117,7 +118,7 @@ int main(int argc, char *argv[]) {
     return usage();
   }
 
-  while ((opt = getopt(argc, argv, "AHBet")) != -1) {
+  while ((opt = getopt(argc, argv, "AHBDetv:")) != -1) {
     switch (opt) {
     case 'A':
       sql_opt.align = false;
@@ -129,6 +130,9 @@ int main(int argc, char *argv[]) {
     case 'B':
       sql_opt.border = false;
       break;
+    case 'D':
+      sql_opt.ingres_date = false;
+      break;
     case 'e':
       sql_opt.break_on_error = true;
       break;
@@ -137,6 +141,17 @@ int main(int argc, char *argv[]) {
       break;
     case 'd':
       sql_opt.debug = true;
+      break;
+    case 'v':
+      if (strlen(optarg) > 0) {
+        if (strcmp(optarg, "tab") == 0) {
+          sprintf(sql_opt.delimit_char, "\t");
+
+        } else {
+          sql_opt.delimit_char[0] = optarg[0];
+          sql_opt.delimit_char[1] = '\0';
+        }
+      }
       break;
     default:
       fprintf(stderr, "Usage: %s [-i input_file] [-o output_file] [-v] [-g]\n", argv[0]);

@@ -39,6 +39,7 @@ int run_command(char *cmd, char **left) {
       str = q_list_get(sql_list, i);
       printf("SQL:%s;\n\n", str->data);
     }
+
   } else {
     return 1;
   }
@@ -54,14 +55,14 @@ void test_read_loop() {
 void test_convert_sql_val() {
   char dt[100];
   strcpy(dt, "1970-01-01 00:00:00");
-  printf("%s(%d) = %s\n", dt, 1000, convert_sql_val(1000, dt));
-  printf("%s(%d) = %s\n", dt, 1114, convert_sql_val(1114, dt));
+  printf("%s(%d) = %s\n", dt, 1000, convert_sql_val(1114, dt, false));
+  printf("%s(%d) = %s\n", dt, 1114, convert_sql_val(1114, dt, true));
   strcpy(dt, "2024-03-14 00:00:00");
-  printf("%s(%d) = %s\n", dt, 1000, convert_sql_val(1000, dt));
-  printf("%s(%d) = %s\n", dt, 1114, convert_sql_val(1114, dt));
+  printf("%s(%d) = %s\n", dt, 1000, convert_sql_val(1114, dt, false));
+  printf("%s(%d) = %s\n", dt, 1114, convert_sql_val(1114, dt, true));
   strcpy(dt, "2024-08-28 09:12:40");
-  printf("%s(%d) = %s\n", dt, 1000, convert_sql_val(1000, dt));
-  printf("%s(%d) = %s\n", dt, 1114, convert_sql_val(1114, dt));
+  printf("%s(%d) = %s\n", dt, 1000, convert_sql_val(1114, dt, false));
+  printf("%s(%d) = %s\n", dt, 1114, convert_sql_val(1114, dt, true));
 }
 
 int main(int argc, char *argv[]) {

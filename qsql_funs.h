@@ -16,6 +16,8 @@ typedef struct {
   bool break_on_error;
   bool debug;
   bool autocommit;
+  bool ingres_date;
+  char delimit_char[4];
 } QSqlOpt;
 
 extern QList *sql_list;
@@ -32,7 +34,7 @@ char *read_word(char **ptr);
 
 void add_current_sql(QStr *sql, QList *lst);
 
-char *convert_sql_val(int coltype, char * val);
+char *convert_sql_val(int coltype, char *val, bool ingres_date_flag);
 
 // Format SQL Results
 void format_sql_result(PGresult *res, QSqlOpt *opt, FILE *fd);
