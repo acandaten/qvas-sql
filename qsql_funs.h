@@ -7,6 +7,7 @@
 #include <libpq-fe.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <regex.h>
 
 typedef struct {
   bool header; /* print output field headings and row count */
@@ -23,6 +24,9 @@ typedef struct {
 extern QList *sql_list;
 extern int (*cmd_function)(char *, char **);
 extern bool process_exiting;
+
+// Regular expression check (returns matches if there is a match)
+regmatch_t *check_regex(char *line, const char *regx, int match_cnt);
 
 QStr *file_gets(FILE *file);
 

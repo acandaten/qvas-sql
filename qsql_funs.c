@@ -37,6 +37,38 @@ void remove_comments(QStr *ln) {
   }
 }
 
+regmatch_t *check_regex(char *line, const char *regx, int match_cnt) {
+  regex_t regex;
+  int reti;
+  regmatch_t *out = NULL;
+
+  if (match_cnt <= 0) {
+    fprintf(stderr, "match_cnt must be greater than 0\n");
+    exit(1);
+  }
+  out =  malloc(sizeof(regmatch_t) * match_cnt);
+
+  reti = regcomp(&regex, regx, REG_EXTENDED | REG_ICASE);
+  if (reti) {
+    fprintf(stderr, "Could not compile regex\n");
+    exit(1);
+  }
+
+  reti = regexec(&regex, line, match_cnt, out, 0);
+  if (!reti) { // Match
+    // for (int i = 0; i < 3; i++) {
+    //   printf("  group %d: %d -> %d\n", i, matches[i].rm_so,
+    //   matches[i].rm_eo);
+    // }
+  } else {
+    free(out);
+    out = NULL;
+  }
+  regfree(&regex);
+
+  return out;
+}
+
 // Reads an alpha word (no numbers or speecial chars) if at start , else null.
 // If the word is returned, it is malloc copy and needs to be freed at some
 // stage.
