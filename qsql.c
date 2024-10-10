@@ -29,6 +29,7 @@ int usage() {
   printf("      -D : no Ingres date\n");
   printf("      -e : break on error\n");
   printf("      -t : transaction (autocommit off)\n");
+  printf("      -s : silent-ish (does nothing - Ingres compat)\n");
   printf("      -d : debug\n");
   return 1;
 }
@@ -247,7 +248,7 @@ int main(int argc, char *argv[]) {
     return usage();
   }
 
-  while ((opt = getopt(argc, argv, "AHBDetv:")) != -1) {
+  while ((opt = getopt(argc, argv, "AHBDestv:")) != -1) {
     switch (opt) {
     case 'A':
       sql_opt.align = false;
@@ -264,6 +265,9 @@ int main(int argc, char *argv[]) {
       break;
     case 'e':
       sql_opt.break_on_error = true;
+      break;
+    case 's':
+      // does nothing (but not error - Ingres command compat)
       break;
     case 't':
       sql_opt.autocommit = false;
